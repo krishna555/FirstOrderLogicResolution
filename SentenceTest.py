@@ -52,8 +52,11 @@ class SentenceTest(unittest.TestCase):
         expected_inference = "B(Bob,y)"
 
         self.s = Sentence(test_sentence)
-        inferred = self.s.resolve(new_sent_obj)
-        self.assertTrue(inferred.sentence_str == expected_inference)
+        inferred_sentences = self.s.resolve(new_sent_obj)
+        test_result = None
+        for sentence in inferred_sentences:
+            test_result = sentence
+        self.assertTrue(test_result.sentence_str == expected_inference)
 
     # @unittest.skip
     def test_inference_self(self):
@@ -64,8 +67,12 @@ class SentenceTest(unittest.TestCase):
 
         self.s = Sentence(test_sentence)
         inferred = self.s.resolve(new_sent_obj)
-        self.assertTrue(inferred.sentence_str == expected_inference)
+        test_result = None
+        for sentence in inferred:
+            test_result = sentence
+        self.assertTrue(test_result.sentence_str == expected_inference)
 
+    # @unittest.skip
     def test_inference_substitution_does_not_matter(self):
         new_sentence = "A(x)"
         new_sentence_obj = Sentence(new_sentence)
@@ -73,8 +80,11 @@ class SentenceTest(unittest.TestCase):
         expected_sentence = "B(C)"
 
         self.s = Sentence(test_sentence)
-        inferred = self.s.resolve(new_sentence_obj)
-        self.assertEqual(inferred.sentence_str, expected_sentence)
+        inferred_sentences = self.s.resolve(new_sentence_obj)
+        test_result = None
+        for sentence in inferred_sentences:
+            test_result = sentence
+        self.assertEqual(test_result.sentence_str, expected_sentence)
 
     # def test_sample_substitution(self):
     #     """A(x) ^ B(y) => C(z)
@@ -92,6 +102,7 @@ class SentenceTest(unittest.TestCase):
     #     print(inferred.sentence_str)
     #     self.assertEqual(True, True)
 
+    # @unittest.skip
     def test_inference_substitution_does_not_matter2(self):
         new_sentence = "~AB(x,y,z,t)|BB(SE)"
         new_sentence_obj = Sentence(new_sentence)
@@ -100,7 +111,10 @@ class SentenceTest(unittest.TestCase):
 
         self.s = Sentence(test_sentence)
         inferred = self.s.resolve(new_sentence_obj)
-        self.assertEqual(inferred.sentence_str, expected_sentence)
+        test_result = None
+        for sentence in inferred:
+            test_result = sentence
+        self.assertEqual(test_result.sentence_str, expected_sentence)
 
     # @unittest.skip
     def test_simple_resolution2(self):
@@ -111,7 +125,10 @@ class SentenceTest(unittest.TestCase):
 
         self.s = Sentence(test_sentence)
         inferred = self.s.resolve(new_sent_obj)
-        self.assertTrue(inferred.get_sentence_str() == expected_inference)
+        test_result = None
+        for sentence in inferred:
+            test_result = sentence            
+        self.assertTrue(test_result.get_sentence_str() == expected_inference)
 
     # @unittest.skip
     def test_no_unification_resolution(self):
@@ -121,7 +138,7 @@ class SentenceTest(unittest.TestCase):
 
         s1 = Sentence(test_sentence)
         inferred = s1.resolve(new_sent_obj)
-        self.assertTrue(inferred == None)
+        self.assertTrue(len(inferred) == 0)
 
     # @unittest.skip
     # def test_multiple_unifications_single_variable(self):

@@ -65,33 +65,6 @@ class Sentence:
                 return False
         return True
         
-    def get_result_from_unification(self, all_unifications, sentence2, removed_predicates):
-        """We will substitute the variables in the original sentence and sentence2.
-        Finally, we will select only those substituted predicates that do not have an instance in the other sentence.
-
-        Args:
-            all_unifications (dict): Dictionary of all possible unifications
-            sentence2 (object): Object of sentence class
-            removed_predicates (set): Set of all predicates removed via unification.
-        """
-        deep_copy_self_predicates = copy.deepcopy(self.predicates)
-        deep_copy_sentence_predicates = copy.deepcopy(sentence2.predicates)
-        all_predicates = []
-        for predicate in deep_copy_self_predicates:
-            if predicate.get_pred_str() in removed_predicates:
-                removed_predicates.remove(predicate.get_pred_str())
-                continue
-            # Do all unifications.
-            predicate.substitution(all_unifications)
-            all_predicates.append(predicate)
-
-        for predicate in deep_copy_sentence_predicates:
-            if predicate.get_pred_str() in removed_predicates:
-                continue
-            predicate.substitution(all_unifications)
-            all_predicates.append(predicate)
-        return all_predicates
-
     def resolve(self, sentence):
         """
             Resolve 2 sentences
@@ -102,9 +75,6 @@ class Sentence:
             sentence (object): Sentence Object with which resolution must happen
         """
         inferred = set()
-
-        all_unifications = {}
-        removed_predicates = set()
         for predicate_1 in self.predicates:
             for predicate_2 in sentence.predicates:
                 unification = False
@@ -114,26 +84,34 @@ class Sentence:
                 if unification == False:
                     continue
                 else:
-                    unification_keys = set(unification.keys())
-                    all_unifications_keys = set(all_unifications.keys())
-                    if unification_keys and unification_keys.issubset(all_unifications_keys):
-                        continue
-
-                    all_unifications.update(unification)
-                    removed_predicates.add(predicate_1.get_pred_str())
-                    removed_predicates.add(predicate_2.get_pred_str())
-                    break
-
-        if not removed_predicates:
-            # No new inferred sentences. No resolution happened.
-            return None
-        new_sentence = Sentence()
-        resolved_predicates = self.get_result_from_unification(all_unifications, sentence, removed_predicates)
-        if len(resolved_predicates) == 0:
-            return False
-        new_sentence.init_from_predicates(resolved_predicates)
-
-        return new_sentence
+                    # rest_predicates_sentence_1 = list(filter(lambda y: False if y == predicate_1 else True, self.predicates))
+                    rest_predicates_sentence_1 = []
+                    rest_predicates_sentence_2 = []
+                    for predicate in self.predicates:
+                        if predicate.get_pred_str() != predicate_1.get_pred_str():
+                            rest_predicates_sentence_1.append(predicate)
+                    
+                    for predicate in sentence.predicates:
+                        if predicate.get_pred_str() != predicate_2.get_pred_str():
+                            rest_predicates_sentence_2.append(predicate)
+                    # rest_predicates_sentence_2 = list(filter(lambda y: False if y == predicate_2 else True, sentence.predicates))
+                    if not rest_predicates_sentence_1 and not rest_predicates_sentence_2:
+                        # print(self.get_sentence_str())
+                        # print(sentence.sentence_str)
+                        return False
+                    other_predicates = []
+                    for predicate in rest_predicates_sentence_1:
+                        # Do Deep copy here because otherwise u will mutate the original Predicate object.
+                        # We want to add new sentences that are inferred not mutate existing ones.
+                        deep_copy_predicate = copy.deepcopy(predicate)
+                        other_predicates.append(deep_copy_predicate.substitution(unification))
+                    for predicate in rest_predicates_sentence_2:
+                        deep_copy_predicate = copy.deepcopy(predicate)
+                        other_predicates.append(deep_copy_predicate.substitution(unification))
+                    new_sentence = Sentence()
+                    new_sentence.init_from_predicates(set(other_predicates))
+                    inferred.add(new_sentence)
+        return inferred
     
     def get_sentences_in_kb(self, kb_hashed):
         """ Get statements with which the current sentence may resolve.

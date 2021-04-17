@@ -1,7 +1,6 @@
 import constant
 import os
 from collections import defaultdict
-
 class FOLResolver:
 
     def __init__(self):
@@ -40,20 +39,21 @@ class FOLResolver:
         for sentence in kb:
             self.all_sentences.add(sentence.get_sentence_str())
 
-    def update_new_sentence(self, inferred_sentence, new_sentences):
+    def update_new_sentences(self, inferred_sentences, new_sentences):
         """
             Check if sentence was previously discovered, if not add it.
         Args:
-            inferred_sentences (Object): Inferred sentences from all possible unifications in current iteration.
+            inferred_sentences (set): Set of inferred sentences from all possible unifications in current iteration.
             new_sentences (set): All new sentences ever discovered in current step.
         """
-        is_sentence_present = False
-        for new_sentence in new_sentences:
-            if inferred_sentence.get_sentence_str() == new_sentence.get_sentence_str():
-                is_sentence_present = True
-                break
-        if not is_sentence_present:
-            new_sentences.add(inferred_sentence)
+        for sentence in inferred_sentences:
+            is_sentence_present = False
+            for new_sentence in new_sentences:
+                if sentence.get_sentence_str() == new_sentence.get_sentence_str():
+                    is_sentence_present = True
+                    break
+            if not is_sentence_present:
+                new_sentences.add(sentence)
         return new_sentences
 
     def any_predicate_with_constants(self, sentence):
@@ -78,11 +78,9 @@ class FOLResolver:
         self.all_sentences.clear()
         self.initialize_all_sentences(kb)
         query.add_to_KB(kb, kb_hashed)
-        
-        i = 0
+
         while True:
             new_sentences = set()
-            i += 1
             for sentence1 in kb:
                 if len(sentence1.get_predicates()) > 1:
                     continue
@@ -90,17 +88,14 @@ class FOLResolver:
                 for sentence2 in resolving_clauses:
                     if sentence1.get_sentence_str() == sentence2.get_sentence_str():
                         continue
-                    inferred_sentence = sentence1.resolve(sentence2)
-                    if inferred_sentence == False:
+                    inferred_sentences = sentence1.resolve(sentence2)
+                    if inferred_sentences == False:
                         return True
-
-                    if inferred_sentence != None:
-                        new_sentences = self.update_new_sentence(inferred_sentence, new_sentences)
+                    new_sentences = self.update_new_sentences(inferred_sentences, new_sentences)
 
             if self.check_for_subset(new_sentences):
                 return False
             new_inferrences = self.get_newly_inferred_sentences(new_sentences)
             for sentence in new_inferrences:
-                string_rep = sentence.get_sentence_str()
                 sentence.add_to_KB(kb, kb_hashed)
                 self.all_sentences.add(sentence.get_sentence_str())

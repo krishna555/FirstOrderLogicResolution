@@ -65,7 +65,6 @@ class Homework:
         ofp = open("output.txt","w")
         ofp.writelines("\n".join(results))
         ofp.close()
-        print(results)
 
 def main():
     start_time = time.time()
