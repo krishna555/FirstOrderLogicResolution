@@ -5,18 +5,6 @@ import unittest
 class FOLResolverTest(unittest.TestCase):
     def setUp(self):
         self.fol_resolver = None
-    
-    def test_any_predicate_with_constants_true(self):
-        predicate_str = "A(Bob)"
-        sentence = Sentence(predicate_str)
-        self.fol_resolver = FOLResolver()
-        self.assertTrue(self.fol_resolver.any_predicate_with_constants(sentence))
-
-    def test_any_predicate_with_constants_false(self):
-        predicate_str = "A(x)"
-        sentence = Sentence(predicate_str)
-        self.fol_resolver = FOLResolver()
-        self.assertFalse(self.fol_resolver.any_predicate_with_constants(sentence))
 
     def test_simple_contradiction(self):
         query = "A(Bob)"

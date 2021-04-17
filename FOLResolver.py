@@ -56,17 +56,6 @@ class FOLResolver:
                 new_sentences.add(sentence)
         return new_sentences
 
-    def any_predicate_with_constants(self, sentence):
-        """Check if the sentence has any predicate with constant args
-
-        Args:
-            sentence (object): Sentence class Object
-        """
-        for predicate in sentence.get_predicates():
-            if sentence.is_only_constant_args(predicate):
-                return True
-        return False
-
     def resolve(self, kb, kb_hashed, query):
         """Perform Resolution for query in KB.
 
