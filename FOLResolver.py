@@ -1,0 +1,106 @@
+import constant
+import os
+from collections import defaultdict
+
+class FOLResolver:
+
+    def __init__(self):
+        self.all_sentences = set()
+    
+    def check_for_subset(self, new_sentences):
+        """Check if the newly inferred sentences already exist in the KB.
+
+        Args:
+            new_sentence (list): List of newly inferred sentences from FOL Full resolution.
+        """
+        for sentence in new_sentences:
+            if sentence.get_sentence_str() not in self.all_sentences:
+                return False
+        return True
+    
+    def get_newly_inferred_sentences(self, new_sentences):
+        """
+        Get list of sentences which was not in the original KB.
+        Args:
+            new_sentences (list): List of Sentence objects which was inferred by FOL Full Resolution Rule
+        """
+        new_inferred_sentences = []
+        for sentence in new_sentences:
+            if sentence.get_sentence_str() not in self.all_sentences:
+                new_inferred_sentences.append(sentence)
+        return new_inferred_sentences
+
+    def initialize_all_sentences(self, kb):
+        """Initialize the all_sentences set with all sentences in KB.
+        This will make lookup with the inferred sentences during resolution easy.
+
+        Args:
+            kb (set): Set of sentences in KB
+        """
+        for sentence in kb:
+            self.all_sentences.add(sentence.get_sentence_str())
+
+    def update_new_sentence(self, inferred_sentence, new_sentences):
+        """
+            Check if sentence was previously discovered, if not add it.
+        Args:
+            inferred_sentences (Object): Inferred sentences from all possible unifications in current iteration.
+            new_sentences (set): All new sentences ever discovered in current step.
+        """
+        is_sentence_present = False
+        for new_sentence in new_sentences:
+            if inferred_sentence.get_sentence_str() == new_sentence.get_sentence_str():
+                is_sentence_present = True
+                break
+        if not is_sentence_present:
+            new_sentences.add(inferred_sentence)
+        return new_sentences
+
+    def any_predicate_with_constants(self, sentence):
+        """Check if the sentence has any predicate with constant args
+
+        Args:
+            sentence (object): Sentence class Object
+        """
+        for predicate in sentence.get_predicates():
+            if sentence.is_only_constant_args(predicate):
+                return True
+        return False
+
+    def resolve(self, kb, kb_hashed, query):
+        """Perform Resolution for query in KB.
+
+        Args:
+            kb (set): Set of sentences in KB.
+            kb_hashed (dict): Each predicate is mapped to a set of all sentences with the predicate. 
+            query (object): Query a Sentence class Object
+        """
+        self.all_sentences.clear()
+        self.initialize_all_sentences(kb)
+        query.add_to_KB(kb, kb_hashed)
+        
+        i = 0
+        while True:
+            new_sentences = set()
+            i += 1
+            for sentence1 in kb:
+                if len(sentence1.get_predicates()) > 1:
+                    continue
+                resolving_clauses = sentence1.get_sentences_in_kb(kb_hashed)
+                for sentence2 in resolving_clauses:
+                    if sentence1.get_sentence_str() == sentence2.get_sentence_str():
+                        continue
+                    inferred_sentence = sentence1.resolve(sentence2)
+                    if inferred_sentence == False:
+                        return True
+
+                    if inferred_sentence != None:
+                        new_sentences = self.update_new_sentence(inferred_sentence, new_sentences)
+
+            if self.check_for_subset(new_sentences):
+                return False
+            new_inferrences = self.get_newly_inferred_sentences(new_sentences)
+            for sentence in new_inferrences:
+                string_rep = sentence.get_sentence_str()
+                sentence.add_to_KB(kb, kb_hashed)
+                self.all_sentences.add(sentence.get_sentence_str())
