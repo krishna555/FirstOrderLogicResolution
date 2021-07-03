@@ -2,10 +2,11 @@ import os
 from FolToCnfConverter import FolToCnfConverter
 from Sentence import Sentence
 from FOLResolver import FOLResolver
+from FOLResolverBeta import FOLResolverBeta
 from Predicate import Predicate
+from variableStandardizer import VariableStandardizer
 import constant
 import copy
-import time
 
 class Homework:
     def __init__(self):
@@ -15,6 +16,7 @@ class Homework:
         self.sentences = None
         self.kb = set()
         self.kb_hash = {}
+        self.variable_standardizer = VariableStandardizer()
 
     def remove_spaces(self, sentence: str):
         """Remove all spaces to make further processing easy.
@@ -45,6 +47,7 @@ class Homework:
         fol_to_cnf_obj = FolToCnfConverter()
         for sentence in self.sentences:
             cnf_sentence = fol_to_cnf_obj.convert_sentence(sentence)
+            cnf_sentence = self.variable_standardizer.standardize(cnf_sentence)
             sentence_obj = Sentence(cnf_sentence)
             sentence_obj.add_to_KB(self.kb, self.kb_hash)
     
@@ -52,12 +55,22 @@ class Homework:
         results = []
         for query_predicate_obj in self.queries:
             fol_resolver = FOLResolver()
+            fallback_resolver = FOLResolverBeta()
             query_predicate_obj.negate()
             query_sentence = Sentence(query_predicate_obj.get_pred_str())
             query_args = query_predicate_obj.get_arguments()
             kb = copy.deepcopy(self.kb)
             kb_hash = copy.deepcopy(self.kb_hash)
             result = fol_resolver.resolve(kb, kb_hash, query_sentence)
+            kb_sentences = fol_resolver.get_all_new_inferrences()
+            if result == False:
+                if len(kb_sentences) > 0:
+                    for sentence in kb_sentences:
+                        sentence.add_to_KB(kb, kb_hash)
+                try:
+                    result = fallback_resolver.resolve_beta(kb, kb_hash, query_sentence)
+                except:
+                    result = False
             if result:
                 results.append("TRUE")
             else:
@@ -67,13 +80,10 @@ class Homework:
         ofp.close()
 
 def main():
-    start_time = time.time()
     h = Homework()
     h.setup_inputs()
     h.make_kb()
     h.run_queries()
-    end_time = time.time()
-    print(" Time for execution : ", end_time - start_time)
 
 if __name__ == "__main__":
     main()

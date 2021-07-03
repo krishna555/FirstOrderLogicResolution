@@ -5,7 +5,11 @@ class FOLResolver:
 
     def __init__(self):
         self.all_sentences = set()
-    
+        self.all_new_inferrences = []
+
+    def get_all_new_inferrences(self):
+        return self.all_new_inferrences
+
     def check_for_subset(self, new_sentences):
         """Check if the newly inferred sentences already exist in the KB.
 
@@ -27,6 +31,7 @@ class FOLResolver:
         for sentence in new_sentences:
             if sentence.get_sentence_str() not in self.all_sentences:
                 new_inferred_sentences.append(sentence)
+                self.all_new_inferrences.append(sentence)
         return new_inferred_sentences
 
     def initialize_all_sentences(self, kb):
@@ -65,9 +70,8 @@ class FOLResolver:
             query (object): Query a Sentence class Object
         """
         self.all_sentences.clear()
-        self.initialize_all_sentences(kb)
         query.add_to_KB(kb, kb_hashed)
-
+        self.initialize_all_sentences(kb)
         while True:
             new_sentences = set()
             for sentence1 in kb:

@@ -6,6 +6,7 @@ class FOLResolverTest(unittest.TestCase):
     def setUp(self):
         self.fol_resolver = None
 
+    @unittest.skip
     def test_simple_contradiction(self):
         query = "A(Bob)"
         predicate_1_str = "~A(x)"
@@ -19,6 +20,7 @@ class FOLResolverTest(unittest.TestCase):
         self.fol_resolver = FOLResolver()
         self.assertTrue(self.fol_resolver.resolve(kb, kb_hashed, query_sentence))
 
+    @unittest.skip
     def test_cyclic_kb_no_contradiction(self):
         query = "A(Bob)"
         predicate_1_str = "~A(x)|B(x)"
@@ -34,5 +36,6 @@ class FOLResolverTest(unittest.TestCase):
         
         self.fol_resolver = FOLResolver()
         self.assertFalse(self.fol_resolver.resolve(kb, kb_hashed, query_sentence))
+
 if __name__ == '__main__':
     unittest.main()

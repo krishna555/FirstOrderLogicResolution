@@ -46,6 +46,15 @@ class Predicate:
     def get_string(self):
         return (constant.NOT_OP * self.is_negative) + self.name + "(" + ','.join(self.arguments) + ')'
 
+    def set_arguments(self, arguments):
+        """Can be used to set new arguments to the Predicate
+
+        Args:
+            arguments (list): List of Strings corresponding to the arguments of the Predicate.
+        """
+        self.arguments = arguments
+        self.update_pred_str()
+
     def negate(self):
         """Negate the Predicate String
         """

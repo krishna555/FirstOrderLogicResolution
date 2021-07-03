@@ -10,7 +10,7 @@ class Sentence:
     """
     def __init__(self, sentence=None):
         if sentence:
-            predicates = sentence.split(constant.OR)
+            predicates = set(sentence.split(constant.OR))
             self.predicates = set()
             for predicate in predicates:
                 self.predicates.add(Predicate(predicate))
@@ -35,10 +35,32 @@ class Sentence:
         kb.add(self)
         for predicate in self.predicates:
             predicate_name = predicate.get_name()
-            if predicate_name in kb_hashed:
-                kb_hashed[predicate_name].add(self)
+            is_negative = predicate.get_is_negative()
+            pred_key = "~" if is_negative else ""
+            pred_str = pred_key + predicate_name
+
+            if pred_str in kb_hashed:
+                kb_hashed[pred_str].add(self)
             else:
-                kb_hashed[predicate_name] = set([self])
+                kb_hashed[pred_str] = set([self])
+
+
+    def remove_from_kb(self, kb, kb_hashed):
+        """Remove the current sentence from KB and its hash
+
+        Args:
+            kb (set): Set of sentences
+            kb_hashed (dict): Dictionary with predicate as the key and set of sentences as value.
+        """
+        kb.remove(self)
+        for predicate in self.predicates:
+            predicate_name = predicate.get_name()
+            is_negative = predicate.get_is_negative()
+            pred_key = "~" if is_negative else ""
+            pred_str = pred_key + predicate_name
+
+            kb_hashed[pred_str].discard(self)
+
 
     def init_from_predicates(self, predicates):
         """Initialize Sentences from Predicates
@@ -46,10 +68,17 @@ class Sentence:
         Args:
             predicates : List of Predicate class objects
         """
-        self.predicates = predicates
         sentences = set()
-        for predicate in predicates:
-            sentences.add(predicate.get_pred_str())
+        self.predicates = set()
+        all_predicates = set()
+        for x in predicates:
+            pred_str = x.pred_str
+            if pred_str not in all_predicates:
+                all_predicates.add(pred_str)
+
+        for predicate_str in all_predicates:
+            sentences.add(predicate_str)
+            self.predicates.add(Predicate(predicate_str))
         self.sentence_str = '|'.join(sentences)
 
     def is_only_constant_args(self, predicate):
@@ -64,7 +93,34 @@ class Sentence:
             if not (arg and arg[0].isupper()):
                 return False
         return True
-        
+
+    def factor_sentence(self):
+        curr_sentence = Sentence(self.sentence_str)
+        factoring_possible = True
+        while factoring_possible:
+            predicates = curr_sentence.get_predicates()
+            for predicate1 in predicates:
+                should_break = False
+                sub_done = False
+                for predicate2 in predicates:
+                    if predicate1 == predicate2:
+                        continue
+                    if predicate1.name == predicate2.name and predicate1.is_negative == predicate2.is_negative:
+                        sub = predicate1.unify_with_predicate(predicate2)
+                        if sub:
+                            # Do substitutions
+                            sub_done = True
+                            for predicate in curr_sentence.get_predicates():
+                                predicate.substitution(sub)
+                            curr_sentence.init_from_predicates(curr_sentence.get_predicates())
+                            should_break = True
+                            break
+                if should_break:
+                    break
+            if not sub_done:
+                factoring_possible = False
+        self.init_from_predicates(curr_sentence.get_predicates())
+
     def resolve(self, sentence):
         """
             Resolve 2 sentences
@@ -109,7 +165,7 @@ class Sentence:
                         deep_copy_predicate = copy.deepcopy(predicate)
                         other_predicates.append(deep_copy_predicate.substitution(unification))
                     new_sentence = Sentence()
-                    new_sentence.init_from_predicates(set(other_predicates))
+                    new_sentence.init_from_predicates(other_predicates)
                     inferred.add(new_sentence)
         return inferred
     
@@ -124,6 +180,64 @@ class Sentence:
         """
         sentences = set()
         for predicate in self.predicates:
-            if predicate.get_name() in kb_hashed:
-                sentences = sentences.union(kb_hashed[predicate.get_name()])
+            is_negative = predicate.get_is_negative()
+            pred_name = predicate.get_name()
+            opposite_sign_str = "" if is_negative else "~"
+            opposite_pred_str = opposite_sign_str + pred_name
+
+            if opposite_pred_str in kb_hashed:
+                sentences = sentences.union(kb_hashed[opposite_pred_str])
         return sentences
+
+    def resolve_beta(self, sentence):
+        """
+            Resolve 2 sentences
+            1. Return False when a contradiction is inferred.
+            2. Return Inferred statements otherwise
+
+        Args:
+            sentence (object): Sentence Object with which resolution must happen
+        """
+        inferred = set()
+        all_predicates = [(x.pred_str.replace("~",""), x) for x in self.predicates]
+        all_predicates = sorted(all_predicates, key=lambda x: x[0])
+        i = 1
+
+        for predicate_tup in all_predicates:
+            if i == 2:
+                break
+            predicate_1_str, predicate_1 = predicate_tup
+            # print(predicate_1_str)
+            i += 1
+            for predicate_2 in sentence.predicates:
+                unification = False
+                if (predicate_1.is_negative ^ predicate_2.is_negative) and \
+                    (predicate_1.name == predicate_2.name):
+                    unification = predicate_1.unify_with_predicate(predicate_2)
+                if unification == False:
+                    continue
+                else:
+                    rest_predicates_sentence_1 = []
+                    rest_predicates_sentence_2 = []
+                    for predicate in self.predicates:
+                        if predicate.get_pred_str() != predicate_1.get_pred_str():
+                            rest_predicates_sentence_1.append(predicate)
+                    
+                    for predicate in sentence.predicates:
+                        if predicate.get_pred_str() != predicate_2.get_pred_str():
+                            rest_predicates_sentence_2.append(predicate)
+                    if not rest_predicates_sentence_1 and not rest_predicates_sentence_2:
+                        return False
+                    other_predicates = []
+                    for predicate in rest_predicates_sentence_1:
+                        # Do Deep copy here because otherwise u will mutate the original Predicate object.
+                        # We want to add new sentences that are inferred not mutate existing ones.
+                        deep_copy_predicate = copy.deepcopy(predicate)
+                        other_predicates.append(deep_copy_predicate.substitution(unification))
+                    for predicate in rest_predicates_sentence_2:
+                        deep_copy_predicate = copy.deepcopy(predicate)
+                        other_predicates.append(deep_copy_predicate.substitution(unification))
+                    new_sentence = Sentence()
+                    new_sentence.init_from_predicates(set(other_predicates))
+                    return new_sentence
+        return None

@@ -72,6 +72,16 @@ class SentenceTest(unittest.TestCase):
             test_result = sentence
         self.assertTrue(test_result.sentence_str == expected_inference)
 
+    def test_inference_no_more_pending_subs_beta(self):
+        new_sentence = "A(Bob)"
+        new_sentence_obj = Sentence(new_sentence)
+        test_sentence = "~A(Bob)|B(C)"
+        expected_sentence = "B(C)"
+
+        self.s = Sentence(test_sentence)
+        inferred = self.s.resolve_beta(new_sentence_obj)
+        self.assertEqual(inferred.sentence_str, expected_sentence)
+
     # @unittest.skip
     def test_inference_substitution_does_not_matter(self):
         new_sentence = "A(x)"
@@ -130,6 +140,17 @@ class SentenceTest(unittest.TestCase):
             test_result = sentence            
         self.assertTrue(test_result.get_sentence_str() == expected_inference)
 
+    def test_simple_resolution3(self):
+        new_sentence = "~Take(x_4,JediPill)|Take(x_4,AntiSith)"
+        new_sent_obj = Sentence(new_sentence)
+        test_sentence = "Take(Bob,JediPill)"
+        expected_inference = "Take(Bob,AntiSith)"
+
+        self.s = Sentence(test_sentence)
+        inferred = self.s.resolve_beta(new_sent_obj)
+        print(inferred.sentence_str)     
+        self.assertTrue(inferred.get_sentence_str() == expected_inference)
+
     # @unittest.skip
     def test_no_unification_resolution(self):
         new_sentence = "A(Bob)"
@@ -161,22 +182,54 @@ class SentenceTest(unittest.TestCase):
         inferred = s2.resolve(new_sent_obj)
         self.assertFalse(inferred)
 
+    def test_simple_standardized_resolution(self):
+        new_sentence="~T(Kim)"
+        test_sentence="T(x_1)|~P(u_1)"
+        new_sent_obj = Sentence(new_sentence)
+        expected_sentence = "~P(u_1)"
+        s2 = Sentence(test_sentence)
+        inferred = s2.resolve(new_sent_obj)
+        result = None
+        for x in inferred:
+            result = x.sentence_str
+        self.assertEqual(result,expected_sentence)
+
+    def test_contradiction_resolution2_beta(self):
+        new_sentence="~Learn(Come,Hayley)|~Train(Come,Hayley)|~Healthy(Hayley)"
+        test_sentence="Healthy(Hayley)"
+        new_sent_obj = Sentence(new_sentence)
+
+        s2 = Sentence(test_sentence)
+        inferred = s2.resolve_beta(new_sent_obj)
+        print(inferred.sentence_str)
+        self.assertTrue(inferred.sentence_str)
+
+    def test_contradiction_resolution_double_preds_beta(self):
+        new_sentence="~A(Bob)|~B(Bob)"
+        test_sentence="A(x)|B(x)"
+        new_sent_obj = Sentence(new_sentence)
+        expected_sentence = "~A(Bob)|A(Bob)"
+        s2 = Sentence(test_sentence)
+        inferred = s2.resolve_beta(new_sent_obj)
+        self.assertTrue(inferred.sentence_str)
+
+
     # @unittest.skip
     def test_get_from_kb_relevant_sentences(self):
         # Setup KB, KB_Hashed
         predicate_1 = "A(John,x)"
         predicate_1_obj = Predicate(predicate_1)
-        predicate_2 = "C(y)"
+        predicate_2 = "~C(y)"
         predicate_2_obj = Predicate(predicate_2)
-        predicate_3 = "C(John)"
+        predicate_3 = "~C(John)"
         predicate_3_obj = Predicate(predicate_3)
 
         kb_hashed = {}
         kb_hashed[predicate_1_obj.get_name()] = set([Sentence(predicate_1)])
 
         # Predicate 2 and 3 share the same name "C"
-        kb_hashed[predicate_2_obj.get_name()] = set([Sentence(predicate_2)])
-        kb_hashed[predicate_3_obj.get_name()].add(Sentence(predicate_3))
+        kb_hashed["~" + predicate_2_obj.get_name()] = set([Sentence(predicate_2)])
+        kb_hashed["~" + predicate_3_obj.get_name()].add(Sentence(predicate_3))
 
         test_sentence = "C(x)"
         self.s = Sentence(test_sentence)
@@ -186,6 +239,37 @@ class SentenceTest(unittest.TestCase):
             result.add(sentence.sentence_str)
         self.assertTrue(result == set([predicate_2, predicate_3]))
 
+    def test_factor_sentence(self):
+        test_sentence = "P(u)|P(v)|T(z)"
+        self.s = Sentence(test_sentence)
+        self.s.factor_sentence()
+        expected_res = ["P(u)|T(z)", "P(v)|T(z)", "T(z)|P(u)", "T(z)|P(v)"]
+        self.assertTrue(self.s.sentence_str in expected_res)
 
+    def test_factor_sentence_2(self):
+        test_sentence = "~Parent(x,p)|~Parent(x,w)|~Parent(a,b)|~Parent(c,d)|Sibling(p,w)"
+        self.s = Sentence(test_sentence)
+        self.s.factor_sentence()
+        print(self.s.sentence_str)
+        expected_res = ["P(u)|T(z)", "P(v)|T(z)", "T(z)|P(u)", "T(z)|P(v)"]
+        self.assertTrue(True)
+
+    def test_remove_from_kb(self):
+        # Setup KB, KB_Hashed
+        predicate = "Brothers(John,x)"
+        predicate_obj = Predicate(predicate)
+        placeholder_sentence = Sentence(predicate)
+        kb = set([placeholder_sentence])
+        kb_hashed = {}
+        kb_hashed[predicate_obj.get_name()] = set([Sentence(predicate)])
+
+        cnf_sentence = "Man(Jack)"
+        cnf_sentence_name = cnf_sentence.split("(")[0]
+        self.s = Sentence(cnf_sentence)
+        self.s.add_to_KB(kb, kb_hashed)
+
+        self.s.remove_from_kb(kb, kb_hashed)
+        self.assertTrue(self.s not in kb_hashed[cnf_sentence_name])
+        self.assertTrue(self.s not in kb)
 if __name__ == '__main__':
     unittest.main()
