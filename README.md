@@ -5,21 +5,28 @@
 2. Given an input of the form, 
 
 <N = NUMBER OF QUERIES>
+
 <QUERY 1>
+
 …
-<QUERY N>
+
+\<QUERY N\>
+
 <K = NUMBER OF GIVEN SENTENCES IN THE KNOWLEDGE BASE>
+
 <SENTENCE 1>
+
 …
-<SENTENCE K>
+
+\<SENTENCE K\>
 
 For each query, determine if that query can be inferred from the knowledge base or not, one 
 query per line:
 
 <ANSWER 1>
-.
-.
-.
+
+...
+
 \<ANSWER N\>
 
 Each answer should be either TRUE if you can prove that the corresponding query sentence is 
